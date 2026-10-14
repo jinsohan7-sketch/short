@@ -1,0 +1,1146 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Thread Frames</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+/* Layout: a tool page. Platform tabs + preview stage on the right (sticky on desktop); accounts, post and comment editors on the left. On phones the stage comes first and the editors stack below. */
+:root {
+  --bg: #eceff2;
+  --surface: #ffffff;
+  --ink: #14181c;
+  --muted: #5b6671;
+  --line: #d6dce2;
+  --accent: #d6402a;
+  --accent-ink: #ffffff;
+  --f-display: "Pixelify Sans", ui-monospace, "SF Mono", Menlo, monospace;
+  --f-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1215;
+    --surface: #171b1f;
+    --ink: #e8ecef;
+    --muted: #8b96a1;
+    --line: #2a3138;
+    --accent: #ff6a4d;
+    --accent-ink: #1a0a06;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1215;
+  --surface: #171b1f;
+  --ink: #e8ecef;
+  --muted: #8b96a1;
+  --line: #2a3138;
+  --accent: #ff6a4d;
+  --accent-ink: #1a0a06;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--f-body);
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+.app { max-width: 1360px; margin: 0 auto; }
+
+/* header */
+.app-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
+.app-head h1 { font: 700 26px/1.1 var(--f-display); margin: 0; letter-spacing: .01em; }
+.app-head p { margin: 4px 0 0; color: var(--muted); max-width: 56ch; }
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 14px; min-height: 38px; font-weight: 600; }
+.btn:not(:disabled):hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:not(:disabled):hover { filter: brightness(1.06); }
+
+/* main grid */
+.main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.stage-col { min-width: 0; }
+.edit-col { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 900px) {
+  .main { grid-template-columns: 460px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .edit-col { grid-column: 1; grid-row: 1; }
+  .stage-col { grid-column: 2; grid-row: 1; position: sticky; top: 12px; }
+}
+
+/* editor panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.panel > summary { list-style: none; cursor: pointer; padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel > summary::-webkit-details-marker { display: none; }
+.panel > summary::after { content: "+"; font: 700 16px var(--f-display); color: var(--muted); }
+.panel[open] > summary::after { content: "\2013"; }
+.panel h2 { font: 700 15px/1 var(--f-display); margin: 0; letter-spacing: .02em; }
+.pbody { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.lbl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.in { width: 100%; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink); font: inherit; }
+select.in { padding-right: 4px; }
+textarea.in { resize: vertical; line-height: 1.4; }
+.in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+.seg { display: flex; flex-wrap: wrap; gap: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+.seg button { flex: 1 1 auto; border: 0; background: transparent; border-radius: 6px; padding: 7px 10px; min-height: 34px; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.18), inset 0 0 0 1px var(--line); }
+.look-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 480px) and (max-width: 899px), (min-width: 1100px) { .look-grid { grid-template-columns: 1fr 1fr; } .look-grid .wide { grid-column: 1 / -1; } }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+/* avatars in the editor */
+.rowav .av, .avprev .av { width: 40px; height: 40px; font-size: 16px; border-radius: 50%; }
+.rowav .av { width: 30px; height: 30px; font-size: 13px; }
+
+/* accounts */
+.aclist { display: flex; flex-direction: column; gap: 10px; }
+.acrow { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; align-items: start; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.avpick { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; border-radius: 8px; }
+.avpick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.avprev { display: block; line-height: 0; }
+.avcam { font-size: 11px; font-weight: 700; color: var(--accent); }
+.acfields { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.acrow .in { background: var(--surface); }
+.acside { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.acside input[type="color"] { width: 100%; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; }
+
+/* comment rows */
+.clist { display: flex; flex-direction: column; gap: 10px; }
+.crow { margin-left: calc(var(--d) * 14px); background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.crow[style*="--d:0"] { border-left-color: var(--accent); }
+.crow.hidden-in-stage { opacity: .55; }
+.crow-top { display: grid; grid-template-columns: 34px 30px minmax(0,1fr) 64px 54px; gap: 6px; align-items: center; }
+.crow .in { background: var(--surface); }
+.num { width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); font: 700 13px var(--f-display); font-variant-numeric: tabular-nums; }
+.num[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.crow-media { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+.crow-act { display: flex; flex-wrap: wrap; gap: 5px; }
+.mini { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 5px 9px; min-height: 30px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; cursor: pointer; }
+.mini:not(:disabled):hover { border-color: var(--muted); }
+.mini.danger { color: var(--accent); }
+.crow-act .danger { margin-left: auto; }
+.filebtn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-row .btn { flex: 1 1 140px; }
+.pmedia { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* reveal bar + stage */
+.platforms { margin-bottom: 12px; }
+.reveal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 12px; }
+.reveal-bar .btn { min-width: 92px; }
+.reveal-bar .range { flex: 1 1 160px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reveal-bar output { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stage-holder { display: flex; justify-content: center; }
+.stage-wrap { position: relative; overflow: hidden; border-radius: 10px; box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgba(0,0,0,.18); flex: none; }
+.canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+.canvas.bg-green { background: #00b140; }
+.canvas.bg-dark { background: #0b0b0d; }
+.canvas.bg-light { background: #f2f2f2; }
+.canvas.bg-stone {
+  background-color: #2c2e30;
+  background-image:
+    linear-gradient(45deg, #36393b 25%, transparent 25%, transparent 75%, #36393b 75%),
+    linear-gradient(45deg, #36393b 25%, transparent 25%, transparent 75%, #36393b 75%);
+  background-size: 160px 160px;
+  background-position: 0 0, 80px 80px;
+}
+.hint { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; max-width: 72ch; }
+
+#toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-weight: 600; max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 80; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* present mode */
+.ptools { position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: none; gap: 8px; z-index: 60; transition: opacity .25s; }
+.ptools button { background: rgba(0,0,0,.72); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 8px; padding: 8px 12px; min-height: 36px; font-weight: 600; }
+body.presenting .ptools { display: flex; }
+body.presenting.idle .ptools { opacity: 0; pointer-events: none; }
+body.presenting.idle .stage-holder { cursor: none; }
+body.presenting { overflow: hidden; }
+body.presenting .app-head, body.presenting .edit-col, body.presenting .reveal-bar, body.presenting .platforms, body.presenting .hint { display: none; }
+body.presenting .stage-col { position: static; }
+body.presenting .stage-holder { position: fixed; inset: 0; z-index: 50; align-items: center; cursor: pointer; }
+body.presenting .stage-wrap { border-radius: 0; box-shadow: none; }
+
+/* ---------- cards drawn on the stage ---------- */
+.card { position: absolute; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; border-radius: .7em; overflow: hidden; transition: top .45s ease; background: var(--cbg); color: var(--cfg); line-height: 1.35; }
+.card .mut { color: var(--cmuted); }
+.card .ic { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.card .ic.fill { fill: currentColor; stroke: none; }
+.av { width: 2.2em; height: 2.2em; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 1em; flex: none; object-fit: cover; }
+.av.sm { width: 1.9em; height: 1.9em; font-size: .8em; }
+img.av { display: block; background: #888; }
+.media { display: block; max-width: 100%; border-radius: .6em; object-fit: cover; background: var(--cline); }
+.media.big { width: 100%; max-height: 24em; margin: .4em 0 .6em; object-fit: contain; }
+.media.sm { max-height: 13em; max-width: 78%; margin: .3em 0 .45em; }
+@keyframes pop { from { opacity: 0; transform: translateY(.5em); } to { opacity: 1; transform: none; } }
+.card .pop { animation: pop .35s ease both; }
+
+/* forum thread */
+.card .lnk { color: var(--clink); }
+.card .men { color: var(--clink); }
+.card.chat .men { background: var(--cmenbg); color: var(--cmenfg); border-radius: .25em; padding: 0 .2em; font-weight: 500; }
+
+.card.thread.dark { --cbg: #0e1113; --cfg: #e8eaec; --cmuted: #8b9299; --cline: #2b3236; --cpill: #1c2327; --cacc: #ff5a36; --clink: #6aa6ff; }
+.card.thread.light { --cbg: #ffffff; --cfg: #1a1a1b; --cmuted: #576f76; --cline: #d5dbdd; --cpill: #eaedef; --cacc: #ff4500; --clink: #0045ac; }
+.thread-in { padding: 1.1em 1.2em 1.3em; }
+.t-head { display: flex; align-items: center; gap: .6em; font-size: .8em; color: var(--cmuted); }
+.t-head b { color: var(--cfg); }
+.t-title { font-size: 1.5em; line-height: 1.22; margin: .5em 0 .3em; font-weight: 700; overflow-wrap: anywhere; white-space: pre-wrap; }
+.t-body { margin: .2em 0 .6em; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.t-actions { display: flex; flex-wrap: wrap; gap: .5em; font-size: .8em; margin: .7em 0 .2em; }
+.pill { display: flex; align-items: center; gap: .45em; background: var(--cpill); padding: .45em .85em; border-radius: 2em; font-weight: 700; }
+.pill .ic:first-child { color: var(--cacc); }
+.t-comments { border-top: .05em solid var(--cline); margin-top: .8em; padding-top: 1em; display: flex; flex-direction: column; gap: 1.1em; }
+.c { display: flex; gap: .6em; }
+.c-left { display: flex; flex-direction: column; align-items: center; gap: .3em; width: 1.9em; flex: none; }
+.c-left .av { width: 1.9em; height: 1.9em; font-size: 1em; }
+.c-line { flex: 1; width: .12em; min-height: .3em; background: var(--cline); border-radius: .1em; }
+.c-main { min-width: 0; flex: 1; }
+.c-meta { font-size: .82em; color: var(--cmuted); display: flex; gap: .45em; align-items: center; }
+.c-meta b { color: var(--cfg); font-weight: 600; }
+.c-text { margin: .15em 0 .4em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.c-act { display: flex; align-items: center; gap: .8em; margin-left: -2.5em; color: var(--cmuted); font-weight: 600; }
+.c-act .collapse { position: relative; z-index: 1; width: 1.9em; display: grid; place-items: center; background: var(--cbg); }
+.c-act .vote, .c-act .act { display: inline-flex; align-items: center; gap: .4em; font-size: .82em; }
+.c-kids { margin-top: .6em; display: flex; flex-direction: column; gap: .9em; }
+
+/* photo feed */
+.card.feed.light { --cbg: #ffffff; --cfg: #111111; --cmuted: #737373; --cline: #efefef; --clink: #00376b; }
+.card.feed.dark { --cbg: #000000; --cfg: #f5f5f5; --cmuted: #a8a8a8; --cline: #262626; --clink: #e0f1ff; }
+.f-head { display: flex; align-items: center; gap: .6em; padding: .8em 1em; font-size: .9em; }
+.f-tile { aspect-ratio: 1 / 1; display: grid; place-items: center; text-align: center; padding: 1.6em; font-size: 1.55em; font-weight: 800; line-height: 1.2; color: #fff; overflow: hidden; }
+.f-tile span { white-space: pre-wrap; overflow-wrap: anywhere; text-shadow: 0 .04em .12em rgba(0,0,0,.25); }
+.f-media { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.f-actions { display: flex; gap: .9em; padding: .75em 1em .35em; font-size: 1.35em; }
+.f-likes { padding: 0 1.1em; font-weight: 700; font-size: .9em; }
+.f-cap { padding: .3em 1.1em .1em; font-size: .9em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.f-count { padding: .3em 1.1em .5em; font-size: .85em; }
+.f-comments { padding: .5em 1em 1.2em; display: flex; flex-direction: column; gap: 1.05em; }
+.fc { display: flex; gap: .7em; align-items: flex-start; margin-left: calc(var(--d) * 2.6em); font-size: .9em; }
+.fc-main { min-width: 0; flex: 1; }
+.fc-top { display: flex; align-items: baseline; gap: .7em; }
+.fc-top b { font-weight: 600; }
+.fc-top .t { color: var(--cmuted); font-size: .9em; }
+.fc-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: .1em; }
+.fc-meta { display: flex; gap: 1em; font-size: .85em; color: var(--cmuted); font-weight: 600; margin-top: .3em; }
+.fc .heart-sm { margin-top: .5em; margin-left: auto; color: var(--cmuted); font-size: 1em; }
+.media.ig { width: 100%; max-height: 22em; border-radius: 1em; margin: .5em 0 .2em; }
+
+/* short posts */
+.card.xpost.dark { --cbg: #000000; --cfg: #e7e9ea; --cmuted: #71767b; --cline: #2f3336; --clink: #1d9bf0; }
+.card.xpost.light { --cbg: #ffffff; --cfg: #0f1419; --cmuted: #536471; --cline: #eff3f4; --clink: #1d9bf0; }
+.x-main { padding: 1.1em 1.2em 0; }
+.x-top { display: flex; align-items: center; gap: .7em; }
+.x-top .grow { flex: 1; min-width: 0; }
+.x-text { font-size: 1.25em; line-height: 1.35; margin: .7em 0 .6em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.x-main .media.big { border-radius: 1em; border: .06em solid var(--cline); max-height: 22em; object-fit: cover; }
+.x-time { font-size: .8em; padding: .7em 0; border-bottom: .06em solid var(--cline); }
+.x-time b { color: var(--cfg); }
+.x-stats { display: flex; justify-content: space-between; align-items: center; padding: .8em .3em; border-bottom: .06em solid var(--cline); font-size: .85em; }
+.x-stats span { display: inline-flex; align-items: center; gap: .5em; }
+.x-sort { padding: .7em 0; font-size: .85em; font-weight: 700; border-bottom: .06em solid var(--cline); display: flex; align-items: center; gap: .3em; }
+.x-composer { display: flex; align-items: center; gap: .7em; padding: .8em 0; }
+.x-composer .ph { flex: 1; font-size: 1.1em; color: var(--cmuted); }
+.x-composer .rbtn { padding: .45em 1.1em; border-radius: 2em; font-weight: 700; font-size: .85em; background: var(--cmuted); color: var(--cbg); opacity: .6; }
+.x-reply { display: flex; gap: .7em; padding: .8em 1.2em; border-top: .06em solid var(--cline); }
+.x-rcol { min-width: 0; flex: 1; }
+.x-rtop { display: flex; align-items: center; justify-content: space-between; gap: .5em; font-size: .92em; }
+.x-rep { font-size: .78em; margin-top: .1em; }
+.x-rep .acc { color: var(--clink); }
+.x-rtext { margin: .15em 0 .5em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.x-icons { display: flex; justify-content: space-between; align-items: center; font-size: .82em; margin-top: .3em; max-width: 94%; }
+.x-icons span { display: inline-flex; align-items: center; gap: .4em; }
+
+/* chat */
+.card.chat.dark { --cbg: #1a1a1e; --cfg: #dbdee1; --cname: #f2f3f5; --cmuted: #949ba4; --cline: #35373c; --cpill: #2b2d31; --clink: #00a8fc; --cmenbg: rgba(88,101,242,.3); --cmenfg: #c9cdfb; --chl: rgba(250,166,26,.1); --chlbar: #f0b232; }
+.card.chat.light { --cbg: #ffffff; --cfg: #2e3338; --cname: #060607; --cmuted: #5c6370; --cline: #e3e5e8; --cpill: #f2f3f5; --clink: #0068e0; --cmenbg: rgba(88,101,242,.15); --cmenfg: #4752c4; --chl: rgba(250,166,26,.12); --chlbar: #f0b232; }
+.d-msgs { padding: .5em 0 .9em; display: flex; flex-direction: column; }
+.d-msg { position: relative; padding: .25em 1.1em; margin-top: 1em; }
+.d-msg:first-child { margin-top: .3em; }
+.d-msg.cont { margin-top: 0; }
+.d-msg.hl { background: var(--chl); box-shadow: inset .16em 0 0 var(--chlbar); }
+.d-ref { display: flex; align-items: center; gap: .4em; font-size: .78em; color: var(--cmuted); margin-left: 1.25em; margin-bottom: .15em; min-width: 0; }
+.d-curve { width: 1.6em; height: .8em; border-left: .14em solid var(--cline); border-top: .14em solid var(--cline); border-top-left-radius: .5em; margin-top: .7em; flex: none; }
+.d-ref .av { width: 1.3em; height: 1.3em; font-size: .7em; }
+.d-ref b { color: var(--cmuted); font-weight: 600; flex: none; }
+.d-snip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.d-row { display: flex; gap: .9em; }
+.d-av { width: 2.5em; flex: none; }
+.d-av .av { width: 2.5em; height: 2.5em; font-size: 1em; }
+.d-body { min-width: 0; flex: 1; }
+.d-top { display: flex; align-items: center; gap: .5em; flex-wrap: wrap; }
+.d-name { font-weight: 600; color: var(--cname); }
+.d-tag { display: inline-flex; align-items: center; gap: .35em; font-size: .68em; font-weight: 700; letter-spacing: .03em; padding: .15em .55em; border-radius: .4em; background: var(--cpill); color: var(--cname); border: .08em solid var(--cline); }
+.d-tag i { width: .75em; height: .75em; border-radius: 50%; display: inline-block; }
+.d-time { font-size: .72em; color: var(--cmuted); }
+.d-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.38; }
+.d-msg .media.att { max-width: 92%; max-height: 16em; border: .06em solid var(--cline); border-radius: .5em; margin: .4em 0 .2em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card .pop { animation: none; }
+  #toast { transition: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 3l9 10h-5.5v8h-7v-8H3z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 21L3 11h5.5V3h7v8H21z"/></symbol>
+    <symbol id="i-comment" viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 011 1v11a1 1 0 01-1 1H9l-5 4V5a1 1 0 011-1z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7h16v-7M12 3v12M7 8l5-5 5 5"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.7-8 11-8 11z"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h15M4 15h15M10 3L8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+    <symbol id="i-views" viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-upo" viewBox="0 0 24 24"><path d="M12 4l-7 8h4.5v8h5v-8H19z"/></symbol>
+    <symbol id="i-downo" viewBox="0 0 24 24"><path d="M12 20l7-8h-4.5V4h-5v8H5z"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="app-head">
+    <div>
+      <h1>Thread Frames</h1>
+      <p>Make fictional accounts, write a post and a comment chain between them, and step through it one message at a time to screen-record over your gameplay.</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn" id="resetBtn" type="button">Load example</button>
+      <button class="btn primary" id="presentBtn" type="button">Present</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="stage-col" aria-label="Preview">
+      <div class="seg platforms" role="group" aria-label="Platform style">
+        <button type="button" data-set="style" data-val="feed">Photo feed</button>
+        <button type="button" data-set="style" data-val="xpost">Short posts</button>
+        <button type="button" data-set="style" data-val="thread">Forum thread</button>
+        <button type="button" data-set="style" data-val="chat">Chat</button>
+      </div>
+      <div class="reveal-bar">
+        <button class="btn" id="backBtn" type="button">&larr; Back</button>
+        <button class="btn primary" id="nextBtn" type="button">Next &rarr;</button>
+        <div class="range">
+          <label class="lbl" for="shown">Comments visible</label>
+          <input type="range" id="shown" min="0" max="0" value="0">
+          <output id="shownLbl" for="shown"></output>
+        </div>
+      </div>
+      <div class="stage-holder" id="holder">
+        <div class="stage-wrap" id="wrap">
+          <div class="canvas bg-green" id="canvas"><div class="card" id="card"></div></div>
+        </div>
+      </div>
+      <p class="hint">Present fills the screen with just the frame. Click or press &rarr; for the next comment, &larr; to go back, Esc to leave. Choose Green screen under Look to key the background out in your editor.</p>
+    </section>
+
+    <section class="edit-col" aria-label="Editor">
+      <details class="panel" open>
+        <summary><h2>Accounts</h2></summary>
+        <div class="pbody">
+          <p class="note">Tap a picture to upload a profile photo. Each post and comment picks which account it comes from.</p>
+          <div class="aclist" id="acList"></div>
+          <button class="btn" type="button" id="addAcct">+ New account</button>
+        </div>
+      </details>
+
+      <details class="panel" open>
+        <summary><h2>Post</h2></summary>
+        <div class="pbody">
+          <div class="row2">
+            <div class="field"><label class="lbl" for="p-acct">Posted by</label><select class="in" id="p-acct" data-p="acct"></select></div>
+            <div class="field"><label class="lbl" for="p-community">Community or channel</label><input class="in" id="p-community" data-p="community" autocomplete="off"></div>
+          </div>
+          <div class="field"><label class="lbl" for="p-title">Post text</label><textarea class="in" id="p-title" data-p="title" rows="2"></textarea></div>
+          <div class="field"><label class="lbl" for="p-body">Caption or extra text (optional)</label><textarea class="in" id="p-body" data-p="body" rows="2"></textarea></div>
+          <div class="field">
+            <span class="lbl">Post image or GIF</span>
+            <div class="pmedia">
+              <span id="pm-prev"></span>
+              <label class="mini filebtn" id="pm-lbl">Add image / GIF<input class="sr" type="file" accept="image/*" id="pm-input"></label>
+              <button type="button" class="mini" id="pm-rm">Remove</button>
+            </div>
+          </div>
+          <div class="row3">
+            <div class="field"><label class="lbl" for="p-likes">Likes</label><input class="in" id="p-likes" data-p="likes" autocomplete="off"></div>
+            <div class="field"><label class="lbl" for="p-time">Time</label><input class="in" id="p-time" data-p="time" autocomplete="off"></div>
+            <div class="field"><label class="lbl" for="p-count">Comments</label><input class="in" id="p-count" data-p="count" placeholder="auto" autocomplete="off"></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label class="lbl" for="p-views">Views</label><input class="in" id="p-views" data-p="views" autocomplete="off"></div>
+            <div class="field"><label class="lbl" for="p-reposts">Reposts</label><input class="in" id="p-reposts" data-p="reposts" autocomplete="off"></div>
+            <div class="field"><label class="lbl" for="p-saves">Saves</label><input class="in" id="p-saves" data-p="saves" autocomplete="off"></div>
+          </div>
+          <p class="note">Views, reposts and saves show in Short posts.</p>
+        </div>
+      </details>
+
+      <details class="panel" open>
+        <summary><h2>Comments</h2></summary>
+        <div class="pbody">
+          <div class="clist" id="clist"></div>
+          <div class="add-row">
+            <button class="btn" type="button" id="addTop">+ New comment</button>
+            <button class="btn" type="button" id="addReply">+ Reply to last</button>
+          </div>
+          <p class="note">Tap a number to show the thread up to that comment. Use In and Out to nest replies, and pick a different account for each reply.</p>
+        </div>
+      </details>
+
+      <details class="panel">
+        <summary><h2>Look</h2></summary>
+        <div class="pbody">
+          <div class="look-grid">
+            <div class="field"><span class="lbl">Card colors</span>
+              <div class="seg" role="group" aria-label="Card colors">
+                <button type="button" data-set="theme" data-val="dark">Dark</button>
+                <button type="button" data-set="theme" data-val="light">Light</button>
+              </div>
+            </div>
+            <div class="field"><span class="lbl">Frame</span>
+              <div class="seg" role="group" aria-label="Frame">
+                <button type="button" data-set="frame" data-val="tall">Vertical 9:16</button>
+                <button type="button" data-set="frame" data-val="wide">Wide 16:9</button>
+              </div>
+            </div>
+            <div class="field"><span class="lbl">Card position</span>
+              <div class="seg" role="group" aria-label="Card position">
+                <button type="button" data-set="pos" data-val="top">Top</button>
+                <button type="button" data-set="pos" data-val="center">Center</button>
+              </div>
+            </div>
+            <div class="field wide"><span class="lbl">Background</span>
+              <div class="seg" role="group" aria-label="Background">
+                <button type="button" data-set="bg" data-val="green">Green screen</button>
+                <button type="button" data-set="bg" data-val="stone">Stone</button>
+                <button type="button" data-set="bg" data-val="dark">Black</button>
+                <button type="button" data-set="bg" data-val="light">Light</button>
+              </div>
+            </div>
+            <div class="field wide"><span class="lbl">Yellow highlight on replies and mentions (Chat)</span>
+              <div class="seg" role="group" aria-label="Chat highlight">
+                <button type="button" data-set="hl" data-val="on">On</button>
+                <button type="button" data-set="hl" data-val="off">Off</button>
+              </div>
+            </div>
+            <div class="field wide">
+              <label class="lbl" for="size">Text size <span id="sizeLbl">100%</span></label>
+              <input type="range" id="size" min="70" max="150" step="5" value="100">
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<div class="ptools" id="ptools">
+  <button type="button" id="pBack">&larr; Back</button>
+  <button type="button" id="pNext">Next &rarr;</button>
+  <button type="button" id="pExit">Exit</button>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var KEY = 'thread-frames-v2';
+
+  function hsl2hex(h, s, l) {
+    s /= 100; l /= 100;
+    var a = s * Math.min(l, 1 - l);
+    function f(n) {
+      var k = (n + h / 30) % 12;
+      var v = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+      var x = Math.round(255 * v).toString(16);
+      return x.length < 2 ? '0' + x : x;
+    }
+    return '#' + f(0) + f(8) + f(4);
+  }
+
+  var SAMPLE = {
+    style: 'thread', theme: 'dark', frame: 'tall', bg: 'green', pos: 'center', size: 100, shown: 7, hl: 'on',
+    accounts: [
+      { id: 'a1', name: 'MilkEnjoyer', handle: 'milkenjoyer', color: '#4f8cff', avatar: null },
+      { id: 'a2', name: 'EggFan_99', handle: 'eggfan_99', color: '#f2a33a', avatar: null },
+      { id: 'a3', name: 'DontEatBro', handle: 'donteatbro', color: '#e5564d', avatar: null },
+      { id: 'a4', name: 'CowGuy', handle: 'cowguy', color: '#4fc08d', avatar: null }
+    ],
+    post: { acct: 'a1', community: 'AskAnything', title: 'Tell me what you are most confused about', body: '', media: null, likes: '12.4K', time: '5h', count: '', views: '810', reposts: '1', saves: '1' },
+    comments: [
+      { id: 'c1', acct: 'a2', text: 'What do I eat first, a boiled egg or a fried egg?', media: null, likes: '3.2K', time: '4h', depth: 0 },
+      { id: 'c2', acct: 'a1', text: 'No, you eat milk first.', media: null, likes: '2.1K', time: '4h', depth: 1 },
+      { id: 'c3', acct: 'a3', text: 'bro I asked about eggs, why is milk here', media: null, likes: '1.8K', time: '3h', depth: 2 },
+      { id: 'c4', acct: 'a1', text: 'well technically I am telling the truth', media: null, likes: '2.6K', time: '3h', depth: 1 },
+      { id: 'c5', acct: 'a2', text: 'the egg is literally in the question', media: null, likes: '940', time: '3h', depth: 2 },
+      { id: 'c6', acct: 'a4', text: 'milk is just a liquid egg. change my mind', media: null, likes: '4.0K', time: '2h', depth: 0 },
+      { id: 'c7', acct: 'a3', text: 'I am leaving this thread', media: null, likes: '1.2K', time: '1h', depth: 1 }
+    ]
+  };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  var toastEl = $('#toast'), toastT;
+  function toast(m) {
+    toastEl.textContent = typeof m === 'string' ? m : 'Something went wrong.';
+    toastEl.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { toastEl.classList.remove('on'); }, 3500);
+  }
+
+  function load() {
+    try {
+      var r = localStorage.getItem(KEY);
+      if (r) {
+        var s = JSON.parse(r);
+        if (s && s.post && Array.isArray(s.comments) && Array.isArray(s.accounts) && s.accounts.length) var base = clone(SAMPLE); var post = Object.assign(base.post, s.post); return Object.assign(base, s, { post: post });
+      }
+    } catch (e) {}
+    return null;
+  }
+  var saveT, warned = false;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(function () {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); return; } catch (e) {}
+      try {
+        var lite = clone(state);
+        lite.accounts.forEach(function (a) { a.avatar = null; });
+        lite.post.media = null;
+        lite.comments.forEach(function (c) { c.media = null; });
+        localStorage.setItem(KEY, JSON.stringify(lite));
+        if (!warned) { warned = true; toast('Photos and GIFs are too big to keep between visits. Your text is saved.'); }
+      } catch (e2) {}
+    }, 400);
+  }
+
+  var state = load() || clone(SAMPLE);
+  var animIdx = -1;
+  var counter = 1;
+  function newId() { return 'n' + Date.now().toString(36) + (counter++); }
+
+  var DIMS = {
+    tall: { W: 1080, H: 1920, cw: 960, base: 40, pad: 70 },
+    wide: { W: 1920, H: 1080, cw: 1240, base: 32, pad: 50 }
+  };
+  var SOLID = { green: '#00b140', stone: '#2c2e30', dark: '#0b0b0d', light: '#f2f2f2' };
+
+  var holder = $('#holder'), wrap = $('#wrap'), canvas = $('#canvas'), card = $('#card');
+  var clist = $('#clist'), acList = $('#acList');
+
+  /* ---------- accounts + media helpers ---------- */
+  function A(id) {
+    for (var i = 0; i < state.accounts.length; i++) if (state.accounts[i].id === id) return state.accounts[i];
+    return state.accounts[0];
+  }
+  function fixAccounts() {
+    var ok = {};
+    state.accounts.forEach(function (a) { ok[a.id] = 1; });
+    var first = state.accounts[0].id;
+    if (!ok[state.post.acct]) state.post.acct = first;
+    state.comments.forEach(function (c) { if (!ok[c.acct]) c.acct = first; });
+  }
+  function hue(s) { var h = 0; s = String(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+  function avatar(a, cls) {
+    if (a.avatar) return '<img class="av ' + (cls || '') + '" src="' + esc(a.avatar) + '" alt="">';
+    var n = (a.name || '').trim();
+    return '<span class="av ' + (cls || '') + '" style="background:' + esc(a.color) + '">' + esc((n.charAt(0) || '?').toUpperCase()) + '</span>';
+  }
+  function media(m, cls) { return (m && m.src) ? '<img class="media ' + (cls || '') + '" src="' + esc(m.src) + '" alt="">' : ''; }
+  function nm(a) { return (a.name && a.name.trim()) || 'Unnamed'; }
+  function hd(a) { return (a.handle && a.handle.trim()) || 'user'; }
+
+  function loadImg(file) {
+    return new Promise(function (res, rej) {
+      if (!file || !/^image\//.test(file.type)) return rej('Pick an image or GIF file.');
+      var u = URL.createObjectURL(file), im = new Image();
+      im.onload = function () { URL.revokeObjectURL(u); res(im); };
+      im.onerror = function () { URL.revokeObjectURL(u); rej('Could not open that image.'); };
+      im.src = u;
+    });
+  }
+  function readMedia(file, maxDim) {
+    if (file && file.type === 'image/gif') {
+      return new Promise(function (res, rej) {
+        if (file.size > 8 * 1024 * 1024) return rej('That GIF is over 8 MB. Try a smaller one.');
+        var fr = new FileReader();
+        fr.onload = function () { res({ src: fr.result, gif: true }); };
+        fr.onerror = function () { rej('Could not read that GIF.'); };
+        fr.readAsDataURL(file);
+      });
+    }
+    return loadImg(file).then(function (im) {
+      var s = Math.min(1, maxDim / Math.max(im.width, im.height));
+      var cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.width * s));
+      cv.height = Math.max(1, Math.round(im.height * s));
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      var png = file.type === 'image/png' || file.type === 'image/webp';
+      return { src: cv.toDataURL(png ? 'image/png' : 'image/jpeg', 0.86), gif: false };
+    });
+  }
+  function readAvatar(file) {
+    return loadImg(file).then(function (im) {
+      var n = 256, cv = document.createElement('canvas');
+      cv.width = cv.height = n;
+      var m = Math.min(im.width, im.height);
+      cv.getContext('2d').drawImage(im, (im.width - m) / 2, (im.height - m) / 2, m, m, 0, 0, n, n);
+      return cv.toDataURL('image/jpeg', 0.88);
+    });
+  }
+
+  /* ---------- card renderers ---------- */
+  function icon(id, fill) { return '<svg class="ic' + (fill ? ' fill' : '') + '"><use href="#i-' + id + '"/></svg>'; }
+  function totalCount(p) { return (p.count && p.count.trim()) ? p.count.trim() : String(state.comments.length); }
+  function popCls(i) { return i === animIdx ? ' pop' : ''; }
+  function parentOf(cs, i) {
+    var c = cs[i];
+    if (c.depth > 0) {
+      for (var j = i - 1; j >= 0; j--) if (cs[j].depth === c.depth - 1) return cs[j];
+    }
+    return null;
+  }
+  function tfmt(t) { t = (t || '').trim(); return /^\d+\s?[smhdw]$/i.test(t) ? t + ' ago' : t; }
+
+  function fmt(t) {
+    t = String(t == null ? '' : t);
+    var re = /(https?:\/\/[^\s]+)|(@[A-Za-z0-9_.]+)|(#[A-Za-z0-9_]+)/g, out = '', last = 0, m;
+    while ((m = re.exec(t))) {
+      var s = m[0], tail = '';
+      if (m[1] || m[2]) { while (s.length > 1 && /[.,!?)]$/.test(s)) { tail = s.slice(-1) + tail; s = s.slice(0, -1); } }
+      out += esc(t.slice(last, m.index)) + '<span class="' + (m[2] ? 'men' : 'lnk') + '">' + esc(s) + '</span>' + esc(tail);
+      last = m.index + m[0].length;
+    }
+    return out + esc(t.slice(last));
+  }
+  function hasMention(t) { return /@[A-Za-z0-9_]/.test(t || ''); }
+  function viewsOf(c) { var h = 0, s = String(c.id); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 97; return String(h + 6); }
+  function buildTree(cs) {
+    var roots = [], stack = [];
+    cs.forEach(function (c, i) {
+      var node = { c: c, i: i, kids: [] };
+      while (stack.length && stack[stack.length - 1].c.depth >= c.depth) stack.pop();
+      if (stack.length) stack[stack.length - 1].kids.push(node); else roots.push(node);
+      stack.push(node);
+    });
+    return roots;
+  }
+
+  /* forum thread */
+  function rNode(n) {
+    var c = n.c, a = A(c.acct);
+    var h = '<div class="c' + popCls(n.i) + '"><div class="c-left">' + avatar(a) + '<span class="c-line"></span></div><div class="c-main">' +
+      '<div class="c-meta"><b>' + esc(hd(a)) + '</b><span>•</span><span>' + esc(tfmt(c.time)) + '</span></div>' +
+      (c.text ? '<div class="c-text">' + fmt(c.text) + '</div>' : '') + media(c.media, 'sm') +
+      '<div class="c-act"><span class="collapse">' + icon('minus') + '</span>' +
+      '<span class="vote">' + icon('upo') + esc(c.likes) + icon('downo') + '</span>' +
+      '<span class="act">' + icon('comment') + 'Reply</span><span class="act">' + icon('share') + 'Share</span><span class="act">' + icon('more') + '</span></div>';
+    if (n.kids.length) h += '<div class="c-kids">' + n.kids.map(rNode).join('') + '</div>';
+    return h + '</div></div>';
+  }
+  function rThread(p, cs) {
+    var pa = A(p.acct);
+    var h = '<div class="thread-in">';
+    h += '<div class="t-head">' + avatar(pa) + '<div><div><b>r/' + esc(p.community || 'AskAnything') + '</b> · ' + esc(tfmt(p.time)) + '</div><div>u/' + esc(hd(pa)) + '</div></div></div>';
+    if (p.title) h += '<h1 class="t-title">' + fmt(p.title) + '</h1>';
+    if (p.body) h += '<p class="t-body">' + fmt(p.body) + '</p>';
+    h += media(p.media, 'big');
+    h += '<div class="t-actions"><span class="pill">' + icon('up', 1) + esc(p.likes) + icon('down', 1) + '</span><span class="pill">' + icon('comment') + esc(totalCount(p)) + '</span><span class="pill">' + icon('share') + 'Share</span></div>';
+    if (cs.length) h += '<div class="t-comments">' + buildTree(cs).map(rNode).join('') + '</div>';
+    return h + '</div>';
+  }
+
+  /* photo feed */
+  function rFeed(p, cs) {
+    var pa = A(p.acct), hh = hue(nm(pa));
+    var h = '<div class="f-head">' + avatar(pa, 'sm') + '<b>' + esc(hd(pa)) + '</b><span class="mut">· ' + esc(p.time) + '</span></div>';
+    var cap;
+    if (p.media && p.media.src) {
+      h += '<img class="f-media" src="' + esc(p.media.src) + '" alt="">';
+      cap = [p.title, p.body].filter(Boolean).join('\n');
+    } else {
+      if (p.title) h += '<div class="f-tile" style="background:linear-gradient(135deg,hsl(' + hh + ' 68% 40%),hsl(' + ((hh + 55) % 360) + ' 72% 52%))"><span>' + esc(p.title) + '</span></div>';
+      cap = p.body;
+    }
+    h += '<div class="f-actions">' + icon('heart') + icon('comment') + icon('share') + '</div>';
+    h += '<div class="f-likes">' + esc(p.likes) + ' likes</div>';
+    if (cap) h += '<div class="f-cap"><b>' + esc(hd(pa)) + '</b> ' + fmt(cap) + '</div>';
+    h += '<div class="f-count mut">View all ' + esc(totalCount(p)) + ' comments</div>';
+    if (cs.length) {
+      h += '<div class="f-comments">';
+      cs.forEach(function (c, i) {
+        var a = A(c.acct), lk = (c.likes || '').trim();
+        var lt = lk ? (lk === '1' ? '1 like' : lk + ' likes') : '';
+        h += '<div class="fc' + popCls(i) + '" style="--d:' + c.depth + '">' + avatar(a, 'sm') +
+          '<div class="fc-main"><div class="fc-top"><b>' + esc(hd(a)) + '</b><span class="t">' + esc(c.time) + '</span></div>' +
+          (c.text ? '<div class="fc-text">' + fmt(c.text) + '</div>' : '') + media(c.media, 'ig') +
+          '<div class="fc-meta">' + (lt ? '<span>' + esc(lt) + '</span>' : '') + '<span>Reply</span></div></div>' +
+          '<svg class="ic heart-sm"><use href="#i-heart"/></svg></div>';
+      });
+      h += '</div>';
+    }
+    return h;
+  }
+
+  /* short posts */
+  function rX(p, cs) {
+    var pa = A(p.acct);
+    var text = [p.title, p.body].filter(Boolean).join('\n\n');
+    var h = '<div class="x-main"><div class="x-top">' + avatar(pa) + '<div class="grow"><b>' + esc(nm(pa)) + '</b><div class="mut">@' + esc(hd(pa)) + '</div></div><span class="mut">' + icon('more') + '</span></div>';
+    if (text) h += '<div class="x-text">' + fmt(text) + '</div>';
+    h += media(p.media, 'big');
+    h += '<div class="x-time mut">' + esc(p.time) + (p.views ? ' · <b>' + esc(p.views) + '</b> Views' : '') + '</div>';
+    h += '<div class="x-stats mut"><span>' + icon('comment') + esc(totalCount(p)) + '</span><span>' + icon('repeat') + esc(p.reposts || '') + '</span><span>' + icon('heart') + esc(p.likes) + '</span><span>' + icon('bookmark') + esc(p.saves || '') + '</span><span>' + icon('share') + '</span></div>';
+    h += '<div class="x-sort">Relevant' + icon('chev') + '</div>';
+    h += '<div class="x-composer"><span class="av" style="background:#9aa5b1"></span><span class="ph">Post your reply</span><span class="rbtn">Reply</span></div></div>';
+    cs.forEach(function (c, i) {
+      var a = A(c.acct), par = parentOf(cs, i), lk = (c.likes || '').trim();
+      h += '<div class="x-reply' + popCls(i) + '">' + avatar(a, 'sm') +
+        '<div class="x-rcol"><div class="x-rtop"><span><b>' + esc(nm(a)) + '</b> <span class="mut">@' + esc(hd(a)) + ' · ' + esc(c.time) + '</span></span><span class="mut">' + icon('more') + '</span></div>' +
+        (par ? '<div class="x-rep mut">Replying to <span class="acc">@' + esc(hd(A(par.acct))) + '</span></div>' : '') +
+        (c.text ? '<div class="x-rtext">' + fmt(c.text) + '</div>' : '') + media(c.media, 'sm') +
+        '<div class="x-icons mut"><span>' + icon('comment') + '</span><span>' + icon('repeat') + '</span><span>' + icon('heart') + (lk ? esc(lk) : '') + '</span><span>' + icon('views') + viewsOf(c) + '</span><span>' + icon('bookmark') + '</span><span>' + icon('share') + '</span></div></div></div>';
+    });
+    return h;
+  }
+
+  /* chat */
+  function dMsg(a, time, text, m, ref, hl, cont, pop) {
+    var h = '<div class="d-msg' + (cont ? ' cont' : '') + (hl ? ' hl' : '') + (pop || '') + '">';
+    if (ref) h += '<div class="d-ref"><span class="d-curve"></span>' + avatar(ref.a, 'sm') + '<b>@' + esc(nm(ref.a)) + '</b><span class="d-snip">' + (ref.text ? fmt(ref.text) : 'Click to see attachment') + '</span></div>';
+    h += '<div class="d-row"><div class="d-av">' + (cont ? '' : avatar(a)) + '</div><div class="d-body">';
+    if (!cont) h += '<div class="d-top"><span class="d-name">' + esc(nm(a)) + '</span>' + (a.tag ? '<span class="d-tag"><i style="background:' + esc(a.color) + '"></i>' + esc(a.tag) + '</span>' : '') + '<span class="d-time">' + esc(tfmt(time)) + '</span></div>';
+    if (text) h += '<div class="d-text">' + fmt(text) + '</div>';
+    h += media(m, 'att');
+    return h + '</div></div></div>';
+  }
+  function rChat(p, cs) {
+    var pa = A(p.acct), hlOn = state.hl !== 'off';
+    var ptext = [p.title, p.body].filter(Boolean).join('\n');
+    var h = '<div class="d-msgs">' + dMsg(pa, p.time, ptext, p.media, null, hlOn && hasMention(ptext), false, '');
+    var prev = pa.id;
+    cs.forEach(function (c, i) {
+      var par = parentOf(cs, i), a = A(c.acct);
+      var ref = par ? { a: A(par.acct), text: par.text } : null;
+      var hl = hlOn && (!!ref || hasMention(c.text));
+      var cont = !ref && a.id === prev;
+      h += dMsg(a, c.time, c.text, c.media, ref, hl, cont, popCls(i));
+      prev = a.id;
+    });
+    return h + '</div>';
+  }
+
+  /* ---------- stage ---------- */
+  function renderStage() {
+    var d = DIMS[state.frame];
+    var cs = state.comments.slice(0, state.shown);
+    var fn = state.style === 'feed' ? rFeed : state.style === 'xpost' ? rX : state.style === 'chat' ? rChat : rThread;
+    card.className = 'card ' + state.style + ' ' + state.theme;
+    card.style.fontSize = (d.base * state.size / 100) + 'px';
+    card.innerHTML = fn(state.post, cs);
+    canvas.className = 'canvas bg-' + state.bg;
+    positionCard();
+  }
+
+  function positionCard() {
+    var d = DIMS[state.frame];
+    var h = card.offsetHeight;
+    card.style.width = d.cw + 'px';
+    card.style.left = ((d.W - d.cw) / 2) + 'px';
+    var top;
+    if (h + 2 * d.pad > d.H) top = d.H - d.pad - h;
+    else top = state.pos === 'center' ? (d.H - h) / 2 : d.pad;
+    card.style.top = top + 'px';
+  }
+
+  function fit() {
+    var d = DIMS[state.frame];
+    var presenting = document.body.classList.contains('presenting');
+    var aw, ah;
+    if (presenting) { aw = window.innerWidth; ah = window.innerHeight; }
+    else {
+      aw = holder.clientWidth || 360;
+      ah = window.innerWidth >= 900 ? Math.max(320, window.innerHeight - 250) : 99999;
+    }
+    var s = Math.min(aw / d.W, ah / d.H);
+    wrap.style.width = Math.floor(d.W * s) + 'px';
+    wrap.style.height = Math.floor(d.H * s) + 'px';
+    canvas.style.width = d.W + 'px';
+    canvas.style.height = d.H + 'px';
+    canvas.style.transform = 'scale(' + s + ')';
+    holder.style.background = presenting ? SOLID[state.bg] : '';
+    positionCard();
+  }
+
+  /* ---------- reveal controls ---------- */
+  function syncReveal() {
+    var n = state.comments.length;
+    state.shown = clamp(state.shown, 0, n);
+    var r = $('#shown');
+    r.max = n; r.value = state.shown;
+    $('#shownLbl').textContent = state.shown + ' of ' + n + (state.shown === 0 ? ' (post only)' : '');
+    $('#backBtn').disabled = state.shown <= 0;
+    $('#nextBtn').disabled = state.shown >= n;
+    clist.querySelectorAll('.crow').forEach(function (row, i) {
+      row.classList.toggle('hidden-in-stage', i >= state.shown);
+      var b = row.querySelector('.num');
+      if (b) b.setAttribute('aria-pressed', i === state.shown - 1 ? 'true' : 'false');
+    });
+  }
+
+  function step(dir) {
+    var t = clamp(state.shown + dir, 0, state.comments.length);
+    if (t === state.shown) return;
+    state.shown = t;
+    animIdx = dir > 0 ? t - 1 : -1;
+    renderStage();
+    animIdx = -1;
+    syncReveal();
+    save();
+  }
+
+  /* ---------- accounts editor ---------- */
+  function acctOptions(sel) {
+    return state.accounts.map(function (a) {
+      return '<option value="' + esc(a.id) + '"' + (a.id === sel ? ' selected' : '') + '>' + esc(nm(a)) + '</option>';
+    }).join('');
+  }
+  function renderAccounts() {
+    acList.innerHTML = state.accounts.map(function (a) {
+      return '<div class="acrow" data-aid="' + esc(a.id) + '">' +
+        '<label class="avpick" title="Change profile photo"><span class="avprev">' + avatar(a) + '</span><span class="avcam">Photo</span><input class="sr" type="file" accept="image/*" data-aphoto aria-label="Upload profile photo for ' + esc(nm(a)) + '"></label>' +
+        '<div class="acfields">' +
+        '<input class="in" id="an-' + esc(a.id) + '" data-af="name" aria-label="Display name" placeholder="Display name" value="' + esc(a.name) + '" autocomplete="off">' +
+        '<input class="in" id="ah-' + esc(a.id) + '" data-af="handle" aria-label="Handle" placeholder="handle" value="' + esc(a.handle) + '" autocomplete="off">' +
+        '<input class="in" id="at-' + esc(a.id) + '" data-af="tag" aria-label="Role tag for chat" placeholder="Role tag in chat (optional)" value="' + esc(a.tag || '') + '" autocomplete="off">' +
+        '</div>' +
+        '<div class="acside">' +
+        '<input type="color" id="ac-' + esc(a.id) + '" data-af="color" aria-label="Name and avatar color" title="Name and avatar color" value="' + esc(a.color) + '">' +
+        '<button type="button" class="mini" data-aact="rmphoto"' + (a.avatar ? '' : ' disabled') + '>No photo</button>' +
+        '<button type="button" class="mini danger" data-aact="del">Delete</button>' +
+        '</div></div>';
+    }).join('');
+  }
+  function refreshSelects() {
+    clist.querySelectorAll('select[data-f="acct"]').forEach(function (s, i) {
+      if (state.comments[i]) s.innerHTML = acctOptions(state.comments[i].acct);
+    });
+    $('#p-acct').innerHTML = acctOptions(state.post.acct);
+  }
+  function refreshRowAvatars() {
+    clist.querySelectorAll('.crow').forEach(function (row, i) {
+      var r = row.querySelector('.rowav');
+      if (r && state.comments[i]) r.innerHTML = avatar(A(state.comments[i].acct), 'sm');
+    });
+  }
+  function acctOf(el) {
+    var row = el.closest('.acrow');
+    if (!row) return null;
+    var id = row.getAttribute('data-aid');
+    for (var i = 0; i < state.accounts.length; i++) if (state.accounts[i].id === id) return state.accounts[i];
+    return null;
+  }
+
+  acList.addEventListener('input', function (e) {
+    var f = e.target.getAttribute('data-af');
+    if (!f) return;
+    var a = acctOf(e.target);
+    if (!a) return;
+    var v = e.target.value;
+    if (f === 'handle') v = v.replace(/^@+/, '').replace(/\s+/g, '');
+    a[f] = v;
+    var row = e.target.closest('.acrow');
+    row.querySelector('.avprev').innerHTML = avatar(a);
+    refreshSelects(); refreshRowAvatars(); renderStage(); save();
+  });
+  acList.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-af') && t.getAttribute('data-af') === 'handle') { var a0 = acctOf(t); if (a0) t.value = a0.handle; }
+    if (t.hasAttribute('data-aphoto')) {
+      var a = acctOf(t), f = t.files && t.files[0];
+      t.value = '';
+      if (!a || !f) return;
+      readAvatar(f).then(function (src) {
+        a.avatar = src;
+        renderAccounts(); refreshRowAvatars(); renderStage(); save();
+      }).catch(toast);
+    }
+  });
+  acList.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-aact]');
+    if (!b) return;
+    var a = acctOf(b);
+    if (!a) return;
+    if (b.getAttribute('data-aact') === 'rmphoto') {
+      a.avatar = null; renderAccounts(); refreshRowAvatars(); renderStage(); save();
+    } else if (b.getAttribute('data-aact') === 'del') {
+      if (state.accounts.length <= 1) { toast('Keep at least one account.'); return; }
+      state.accounts.splice(state.accounts.indexOf(a), 1);
+      fixAccounts();
+      renderAccounts(); renderEditor(); refreshSelects(); renderStage(); save();
+    }
+  });
+  $('#addAcct').addEventListener('click', function () {
+    var n = state.accounts.length + 1;
+    var a = { id: newId(), name: 'User' + n, handle: 'user' + n, color: hsl2hex((n * 67 + 200) % 360, 62, 56), avatar: null };
+    state.accounts.push(a);
+    renderAccounts(); refreshSelects(); save();
+    var inp = document.getElementById('an-' + a.id);
+    if (inp) { inp.focus(); inp.select(); }
+  });
+
+  /* ---------- comments editor ---------- */
+  function normalize() {
+    var cs = state.comments;
+    for (var i = 0; i < cs.length; i++) {
+      var max = i === 0 ? 0 : cs[i - 1].depth + 1;
+      cs[i].depth = clamp(cs[i].depth, 0, Math.min(3, max));
+    }
+  }
+
+  function renderEditor() {
+    clist.innerHTML = state.comments.map(function (c, i) {
+      var m = c.media && c.media.src;
+      return '<article class="crow" data-id="' + esc(c.id) + '" style="--d:' + c.depth + '">' +
+        '<div class="crow-top">' +
+        '<button type="button" class="num" data-act="upto" aria-label="Show thread up to comment ' + (i + 1) + '" title="Show thread up to here">' + (i + 1) + '</button>' +
+        '<span class="rowav">' + avatar(A(c.acct), 'sm') + '</span>' +
+        '<select class="in" id="s-' + esc(c.id) + '" data-f="acct" aria-label="Account for comment ' + (i + 1) + '">' + acctOptions(c.acct) + '</select>' +
+        '<input class="in" id="l-' + esc(c.id) + '" data-f="likes" autocomplete="off" aria-label="Likes" placeholder="Likes" value="' + esc(c.likes) + '">' +
+        '<input class="in" id="t-' + esc(c.id) + '" data-f="time" autocomplete="off" aria-label="Time" placeholder="Time" value="' + esc(c.time) + '">' +
+        '</div>' +
+        '<textarea class="in" id="x-' + esc(c.id) + '" data-f="text" rows="2" aria-label="Comment text" placeholder="What do they say?">' + esc(c.text) + '</textarea>' +
+        '<div class="crow-media">' + (m ? '<img class="thumb" src="' + esc(c.media.src) + '" alt="Attached image">' : '') +
+        '<label class="mini filebtn">' + (m ? 'Replace image / GIF' : 'Add image / GIF') + '<input class="sr" type="file" accept="image/*" data-mf></label>' +
+        (m ? '<button type="button" class="mini" data-act="rmmedia">Remove</button>' : '') + '</div>' +
+        '<div class="crow-act">' +
+        '<button type="button" class="mini" data-act="out" aria-label="Move out one level">&larr; Out</button>' +
+        '<button type="button" class="mini" data-act="in" aria-label="Nest one level in">In &rarr;</button>' +
+        '<button type="button" class="mini" data-act="reply">+ Reply</button>' +
+        '<button type="button" class="mini" data-act="up" aria-label="Move up">&uarr;</button>' +
+        '<button type="button" class="mini" data-act="down" aria-label="Move down">&darr;</button>' +
+        '<button type="button" class="mini danger" data-act="del">Delete</button>' +
+        '</div></article>';
+    }).join('');
+    syncReveal();
+  }
+
+  function indexOfRow(el) {
+    var row = el.closest('.crow');
+    if (!row) return -1;
+    var id = row.getAttribute('data-id');
+    for (var i = 0; i < state.comments.length; i++) if (state.comments[i].id === id) return i;
+    return -1;
+  }
+
+  function structural(focusId) {
+    normalize();
+    renderEditor();
+    renderStage();
+    save();
+    if (focusId) { var t = document.getElementById('x-' + focusId); if (t) t.focus(); }
+  }
+
+  function addComment(depth, afterIndex) {
+    var prev = afterIndex != null ? state.comments[afterIndex] : state.comments[state.comments.length - 1];
+    var other = state.accounts[0].id;
+    for (var k = 0; k < state.accounts.length; k++) { if (!prev || state.accounts[k].id !== prev.acct) { other = state.accounts[k].id; break; } }
+    var c = { id: newId(), acct: other, text: '', media: null, likes: String(Math.floor(Math.random() * 900) + 100), time: '1h', depth: depth };
+    var at = afterIndex == null ? state.comments.length : afterIndex + 1;
+    state.comments.splice(at, 0, c);
+    state.shown = state.comments.length;
+    structural(c.id);
+  }
+
+  clist.addEventListener('input', function (e) {
+    var f = e.target.getAttribute('data-f');
+    if (!f) return;
+    var i = indexOfRow(e.target);
+    if (i < 0) return;
+    state.comments[i][f] = e.target.value;
+    if (f === 'acct') refreshRowAvatars();
+    renderStage();
+    save();
+  });
+  clist.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t.hasAttribute('data-mf')) return;
+    var i = indexOfRow(t), f = t.files && t.files[0];
+    t.value = '';
+    if (i < 0 || !f) return;
+    readMedia(f, 1000).then(function (m) {
+      state.comments[i].media = m;
+      renderEditor(); renderStage(); save();
+    }).catch(toast);
+  });
+  clist.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var i = indexOfRow(b), act = b.getAttribute('data-act'), cs = state.comments;
+    if (i < 0) return;
+    if (act === 'upto') { state.shown = i + 1; renderStage(); syncReveal(); save(); return; }
+    if (act === 'in') { cs[i].depth += 1; structural(); }
+    else if (act === 'out') { cs[i].depth -= 1; structural(); }
+    else if (act === 'reply') { addComment(Math.min(cs[i].depth + 1, 3), i); }
+    else if (act === 'rmmedia') { cs[i].media = null; renderEditor(); renderStage(); save(); }
+    else if (act === 'up' && i > 0) { var t = cs[i]; cs[i] = cs[i - 1]; cs[i - 1] = t; structural(); }
+    else if (act === 'down' && i < cs.length - 1) { var t2 = cs[i]; cs[i] = cs[i + 1]; cs[i + 1] = t2; structural(); }
+    else if (act === 'del') { cs.splice(i, 1); state.shown = clamp(state.shown, 0, cs.length); structural(); }
+  });
+
+  $('#addTop').addEventListener('click', function () { addComment(0); });
+  $('#addReply').addEventListener('click', function () {
+    var n = state.comments.length;
+    addComment(n ? Math.min(state.comments[n - 1].depth + 1, 3) : 0);
+  });
+
+  /* ---------- post editor ---------- */
+  document.querySelectorAll('[data-p]').forEach(function (el) {
+    el.addEventListener('input', function () {
+      state.post[el.getAttribute('data-p')] = el.value;
+      renderStage(); save();
+    });
+  });
+  function renderPostMedia() {
+    var m = state.post.media && state.post.media.src;
+    $('#pm-prev').innerHTML = m ? '<img class="thumb" src="' + esc(state.post.media.src) + '" alt="Post image">' : '';
+    $('#pm-rm').hidden = !m;
+    $('#pm-lbl').firstChild.nodeValue = m ? 'Replace image / GIF' : 'Add image / GIF';
+  }
+  $('#pm-input').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    readMedia(f, 1200).then(function (m) {
+      state.post.media = m; renderPostMedia(); renderStage(); save();
+    }).catch(toast);
+  });
+  $('#pm-rm').addEventListener('click', function () { state.post.media = null; renderPostMedia(); renderStage(); save(); });
+  function fillPost() {
+    $('#p-acct').innerHTML = acctOptions(state.post.acct);
+    document.querySelectorAll('[data-p]').forEach(function (el) {
+      var k = el.getAttribute('data-p');
+      if (k === 'acct') el.value = state.post.acct; else el.value = state.post[k] || '';
+    });
+    renderPostMedia();
+  }
+
+  /* ---------- look controls ---------- */
+  function syncLook() {
+    document.querySelectorAll('[data-set]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(state[b.getAttribute('data-set')] === b.getAttribute('data-val')));
+    });
+    $('#size').value = state.size;
+    $('#sizeLbl').textContent = state.size + '%';
+  }
+  document.querySelectorAll('[data-set]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state[b.getAttribute('data-set')] = b.getAttribute('data-val');
+      syncLook(); renderStage(); fit(); save();
+    });
+  });
+  $('#size').addEventListener('input', function (e) {
+    state.size = +e.target.value;
+    $('#sizeLbl').textContent = state.size + '%';
+    renderStage(); save();
+  });
+
+  $('#nextBtn').addEventListener('click', function () { step(1); });
+  $('#backBtn').addEventListener('click', function () { step(-1); });
+  $('#shown').addEventListener('input', function (e) {
+    state.shown = +e.target.value; renderStage(); syncReveal(); save();
+  });
+
+  var resetT;
+  $('#resetBtn').addEventListener('click', function (e) {
+    var b = e.currentTarget;
+    if (b.getAttribute('data-armed') !== '1') {
+      b.setAttribute('data-armed', '1'); b.textContent = 'Replace my work?';
+      resetT = setTimeout(function () { b.removeAttribute('data-armed'); b.textContent = 'Load example'; }, 3000);
+      return;
+    }
+    clearTimeout(resetT);
+    b.removeAttribute('data-armed'); b.textContent = 'Load example';
+    state = clone(SAMPLE);
+    fillPost(); syncLook(); renderAccounts(); renderEditor(); renderStage(); fit(); save();
+  });
+
+  /* ---------- present mode ---------- */
+  var idleT, wasFull = false;
+  function wake() {
+    document.body.classList.remove('idle');
+    clearTimeout(idleT);
+    if (document.body.classList.contains('presenting')) idleT = setTimeout(function () { document.body.classList.add('idle'); }, 2500);
+  }
+  function enterPresent() {
+    document.body.classList.add('presenting');
+    try {
+      var p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+      if (p && p.then) p.then(function () { wasFull = true; }, function () {});
+    } catch (e) {}
+    fit(); wake();
+  }
+  function exitPresent() {
+    if (!document.body.classList.contains('presenting')) return;
+    document.body.classList.remove('presenting', 'idle');
+    clearTimeout(idleT);
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {}
+    wasFull = false;
+    fit();
+  }
+  document.addEventListener('fullscreenchange', function () {
+    if (!document.fullscreenElement && wasFull) exitPresent();
+  });
+  $('#presentBtn').addEventListener('click', enterPresent);
+  $('#pExit').addEventListener('click', function (e) { e.stopPropagation(); exitPresent(); });
+  $('#pNext').addEventListener('click', function (e) { e.stopPropagation(); step(1); wake(); });
+  $('#pBack').addEventListener('click', function (e) { e.stopPropagation(); step(-1); wake(); });
+  holder.addEventListener('click', function () { if (document.body.classList.contains('presenting')) step(1); });
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, { passive: true });
+
+  document.addEventListener('keydown', function (e) {
+    var presenting = document.body.classList.contains('presenting');
+    if (e.key === 'Escape' && presenting) { exitPresent(); return; }
+    var tag = e.target && e.target.tagName;
+    if (!presenting && (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'SUMMARY')) return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); step(1); wake(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); wake(); }
+  });
+
+  window.addEventListener('resize', fit);
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { fit(); }).observe(holder);
+    new ResizeObserver(function () { positionCard(); }).observe(card);
+  }
+
+  /* ---------- boot ---------- */
+  fixAccounts();
+  normalize();
+  fillPost(); syncLook(); renderAccounts(); renderEditor(); renderStage(); fit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { positionCard(); });
+})();
+</script>
+
+</body></html>
